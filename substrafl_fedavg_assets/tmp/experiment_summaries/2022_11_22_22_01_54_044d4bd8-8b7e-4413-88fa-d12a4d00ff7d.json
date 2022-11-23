@@ -1,0 +1,77 @@
+{
+    "compute_plan_key": "044d4bd8-8b7e-4413-88fa-d12a4d00ff7d",
+    "strategy": "FedAvg",
+    "num_rounds": 3,
+    "algo": {
+        "type": "<class '__main__.MyAlgo'>",
+        "model": "<class '__main__.CNN'>",
+        "criterion": "<class 'torch.nn.modules.loss.CrossEntropyLoss'>",
+        "optimizer": {
+            "type": "<class 'torch.optim.adam.Adam'>",
+            "parameters": {
+                "lr": 0.001,
+                "betas": [
+                    0.9,
+                    0.999
+                ],
+                "eps": 1e-08,
+                "weight_decay": 0,
+                "amsgrad": false,
+                "maximize": false
+            }
+        },
+        "scheduler": null,
+        "with_batch_norm_parameters": "False"
+    },
+    "algo_keys": {
+        "1f6c4e09-e7f6-43d2-bf73-f5f492459d09": {
+            "type": "MyAlgo",
+            "method_name": "train"
+        },
+        "9e632273-f0f0-4f5f-8fe1-1fa049779884": {
+            "type": "FedAvg",
+            "method_name": "avg_shared_states"
+        }
+    },
+    "train_data_nodes": [
+        {
+            "organization_id": "MyOrg1MSP",
+            "data_manager_key": "8fbbe4a0-f228-486e-807f-61b8cfeb876b",
+            "data_sample_keys": [
+                "8157a7c1-861e-4bbc-b4d6-1187038632a3"
+            ]
+        },
+        {
+            "organization_id": "MyOrg2MSP",
+            "data_manager_key": "8ee472b5-242c-4a97-a73d-0437bb6a00c6",
+            "data_sample_keys": [
+                "7c742e70-7b8e-475e-858f-e3d9c5b4bf80"
+            ]
+        }
+    ],
+    "test_data_nodes": [
+        {
+            "organization_id": "MyOrg1MSP",
+            "data_manager_key": "8fbbe4a0-f228-486e-807f-61b8cfeb876b",
+            "data_sample_keys": [
+                "26a8c634-5e41-4bbb-83ac-83fc3345bf24"
+            ],
+            "metric_keys": [
+                "1a3b44e2-ae91-4145-9afe-0cf117c69cb3"
+            ]
+        },
+        {
+            "organization_id": "MyOrg2MSP",
+            "data_manager_key": "8ee472b5-242c-4a97-a73d-0437bb6a00c6",
+            "data_sample_keys": [
+                "1e2602db-421c-4d3c-abdc-87b18634eec3"
+            ],
+            "metric_keys": [
+                "1a3b44e2-ae91-4145-9afe-0cf117c69cb3"
+            ]
+        }
+    ],
+    "aggregation_node": {
+        "organization_id": "MyOrg2MSP"
+    }
+}
