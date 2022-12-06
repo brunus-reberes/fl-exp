@@ -1,68 +1,265 @@
 import flwr as fl
+from typing import Dict, List, Optional, Tuple, Union
+import numpy as np
 
+from flwr.common import EvaluateIns, EvaluateRes, FitIns, FitRes, Parameters, Config, NDArrays, Scalar
+from flwr.server.client_manager import ClientManager
+from flwr.server.client_proxy import ClientProxy
 
-class FlowerClient(fl.client.NumPyClient):
-    def __init__(self, model, train_data, test_data):
-        self.model = model
-        self.train_data = train_data
-        self.test_data = test_data
+import model
 
-    def get_parameters(self, config):
-        return []
+class GeneticClient(fl.client.NumPyClient):
+    def __init__(self, cid) -> None:
+        self.hof = []
+        self.cid = cid
+        model.init_model()
 
-    def set_parameters(self, parameters):
-        pass
+    def get_properties(self, config: Config) -> Dict[str, Scalar]:
+        """Returns a client's set of properties.
 
-    def fit(self, parameters, config):
-        self.set_parameters(parameters)
-        train(self.model, self.train_data, popsize=10000, gen=1000, verbose=False)
-        return self.get_parameters(self.model), len(self.train_data), {}
+        Parameters
+        ----------
+        config : Config
+            Configuration parameters requested by the server.
+            This can be used to tell the client which properties
+            are needed along with some Scalar attributes.
 
-    def evaluate(self, parameters, config):
-        self.set_parameters(parameters)
-        accuracy = test(self.model, self.test_data)
-        return 0, 0, {"accuracy": float(accuracy)}
+        Returns
+        -------
+        properties : Dict[str, Scalar]
+            A dictionary mapping arbitrary string keys to values of type
+            bool, bytes, float, int, or str. It can be used to communicate
+            arbitrary property values back to the server.
+        """
+        return {}
 
-def client_fn(cid: str) -> FlowerClient:
-    """Create a Flower client representing a single organization."""
+    def get_parameters(self, config: Dict[str, Scalar]) -> NDArrays:
+        """Return the current local model parameters.
 
-    # Load model
-    model = ellyn(classification=True, 
-                class_m4gp=True, 
-                prto_arch_on=True,
-                selection='lexicase',
-                fit_type='F1', # can be 'F1' or 'F1W' (weighted F1)dition=False,
-                #stop_condition=True
-               )
+        Parameters
+        ----------
+        config : Config
+            Configuration parameters requested by the server.
+            This can be used to tell the client which parameters
+            are needed along with some Scalar attributes.
 
-    train_data, test_data = load_datasets()
+        Returns
+        -------
+        parameters : NDArrays
+            The local model parameters as a list of NumPy ndarrays.
+        """
+        return np.array(self.hof)
 
-    # Create a  single Flower client representing a single organization
-    return FlowerClient(model, train_data, test_data)
+    def fit(
+        self, parameters: NDArrays, config: Dict[str, Scalar]
+    ) -> Tuple[NDArrays, int, Dict[str, Scalar]]:
+        """Train the provided parameters using the locally held dataset.
+
+        Parameters
+        ----------
+        parameters : NDArrays
+            The current (global) model parameters.
+        config : Dict[str, Scalar]
+            Configuration parameters which allow the
+            server to influence training on the client. It can be used to
+            communicate arbitrary values from the server to the client, for
+            example, to set the number of (local) training epochs.
+
+        Returns
+        -------
+        parameters : NDArrays
+            The locally updated model parameters.
+        num_examples : int
+            The number of examples used for training.
+        metrics : Dict[str, Scalar]
+            A dictionary mapping arbitrary string keys to values of type
+            bool, bytes, float, int, or str. It can be used to communicate
+            arbitrary values back to the server.
+        """
+        self.hof = model.train(parameters)
+        return np.array(self.hof), 1, {}
+
+    def evaluate(
+        self, parameters: NDArrays, config: Dict[str, Scalar]
+    ) -> Tuple[float, int, Dict[str, Scalar]]:
+        """Evaluate the provided parameters using the locally held dataset.
+
+        Parameters
+        ----------
+        parameters : NDArrays
+            The current (global) model parameters.
+        config : Dict[str, Scalar]
+            Configuration parameters which allow the server to influence
+            evaluation on the client. It can be used to communicate
+            arbitrary values from the server to the client, for example,
+            to influence the number of examples used for evaluation.
+
+        Returns
+        -------
+        loss : float
+            The evaluation loss of the model on the local dataset.
+        num_examples : int
+            The number of examples used for evaluation.
+        metrics : Dict[str, Scalar]
+            A dictionary mapping arbitrary string keys to values of
+            type bool, bytes, float, int, or str. It can be used to
+            communicate arbitrary values back to the server.
+
+        Warning
+        -------
+        The previous return type format (int, float, float) and the
+        extended format (int, float, float, Dict[str, Scalar]) have been
+        deprecated and removed since Flower 0.19.
+        """
+        return 0, 1, {}
 
 class GeneticStrategy(fl.server.strategy.Strategy):
-    def initialize_parameters(self, client_manager):
-        # Your implementation here
+    def initialize_parameters(
+            self, client_manager: ClientManager
+        ) -> Optional[Parameters]:
+        """Initialize the (global) model parameters.
+        Parameters
+        ----------
+        client_manager : ClientManager
+            The client manager which holds all currently connected clients.
+        Returns
+        -------
+        parameters : Optional[Parameters]
+            If parameters are returned, then the server will treat these as the
+            initial global model parameters.
+        """
+        return None
 
-    def configure_fit(self, server_round, parameters, client_manager):
-        # Your implementation here
+    def configure_fit(
+        self, server_round: int, parameters: Parameters, client_manager: ClientManager
+    ) -> List[Tuple[ClientProxy, FitIns]]:
+        """Configure the next round of training.
+        Parameters
+        ----------
+        server_round : int
+            The current round of federated learning.
+        parameters : Parameters
+            The current (global) model parameters.
+        client_manager : ClientManager
+            The client manager which holds all currently connected clients.
+        Returns
+        -------
+        fit_configuration : List[Tuple[ClientProxy, FitIns]]
+            A list of tuples. Each tuple in the list identifies a `ClientProxy` and the
+            `FitIns` for this particular `ClientProxy`. If a particular `ClientProxy`
+            is not included in this list, it means that this `ClientProxy`
+            will not participate in the next round of federated learning.
+        """
+        clients = client_manager.all().values()
+        return [(client, FitIns(parameters, {})) for client in clients]
 
-    def aggregate_fit(self, server_round, results, failures):
-        # Your implementation here
+    def aggregate_fit(
+        self,
+        server_round: int,
+        results: List[Tuple[ClientProxy, FitRes]],
+        failures: List[Union[Tuple[ClientProxy, FitRes], BaseException]],
+    ) -> Tuple[Optional[Parameters], Dict[str, Scalar]]:
+        """Aggregate training results.
+        Parameters
+        ----------
+        server_round : int
+            The current round of federated learning.
+        results : List[Tuple[ClientProxy, FitRes]]
+            Successful updates from the previously selected and configured
+            clients. Each pair of `(ClientProxy, FitRes)` constitutes a
+            successful update from one of the previously selected clients. Not
+            that not all previously selected clients are necessarily included in
+            this list: a client might drop out and not submit a result. For each
+            client that did not submit an update, there should be an `Exception`
+            in `failures`.
+        failures : List[Union[Tuple[ClientProxy, FitRes], BaseException]]
+            Exceptions that occurred while the server was waiting for client
+            updates.
+        Returns
+        -------
+        parameters : Optional[Parameters]
+            If parameters are returned, then the server will treat these as the
+            new global model parameters (i.e., it will replace the previous
+            parameters with the ones returned from this method). If `None` is
+            returned (e.g., because there were only failures and no viable
+            results) then the server will no update the previous model
+            parameters, the updates received in this round are discarded, and
+            the global model parameters remain the same.
+        """
+        return None, {}
 
-    def configure_evaluate(self, server_round, parameters, client_manager):
-        # Your implementation here
+    def configure_evaluate(
+        self, server_round: int, parameters: Parameters, client_manager: ClientManager
+    ) -> List[Tuple[ClientProxy, EvaluateIns]]:
+        """Configure the next round of evaluation.
+        Parameters
+        ----------
+        server_round : int
+            The current round of federated learning.
+        parameters : Parameters
+            The current (global) model parameters.
+        client_manager : ClientManager
+            The client manager which holds all currently connected clients.
+        Returns
+        -------
+        evaluate_configuration : List[Tuple[ClientProxy, EvaluateIns]]
+            A list of tuples. Each tuple in the list identifies a `ClientProxy` and the
+            `EvaluateIns` for this particular `ClientProxy`. If a particular
+            `ClientProxy` is not included in this list, it means that this
+            `ClientProxy` will not participate in the next round of federated
+            evaluation.
+        """
+        clients = client_manager.all().values()
+        return [(client, EvaluateIns(parameters, {})) for client in clients]
 
-    def aggregate_evaluate(self, server_round, results, failures):
-        # Your implementation here
+    def aggregate_evaluate(
+        self,
+        server_round: int,
+        results: List[Tuple[ClientProxy, EvaluateRes]],
+        failures: List[Union[Tuple[ClientProxy, EvaluateRes], BaseException]],
+    ) -> Tuple[Optional[float], Dict[str, Scalar]]:
+        """Aggregate evaluation results.
+        Parameters
+        ----------
+        server_round : int
+            The current round of federated learning.
+        results : List[Tuple[ClientProxy, FitRes]]
+            Successful updates from the
+            previously selected and configured clients. Each pair of
+            `(ClientProxy, FitRes` constitutes a successful update from one of the
+            previously selected clients. Not that not all previously selected
+            clients are necessarily included in this list: a client might drop out
+            and not submit a result. For each client that did not submit an update,
+            there should be an `Exception` in `failures`.
+        failures : List[Union[Tuple[ClientProxy, EvaluateRes], BaseException]]
+            Exceptions that occurred while the server was waiting for client updates.
+        Returns
+        -------
+        aggregation_result : Optional[float]
+            The aggregated evaluation result. Aggregation typically uses some variant
+            of a weighted average.
+        """
+        return None
 
-    def evaluate(self, parameters):
-        # Your implementation here
+    def evaluate(
+        self, server_round: int, parameters: Parameters
+    ) -> Optional[Tuple[float, Dict[str, Scalar]]]:
+        """Evaluate the current model parameters.
+        This function can be used to perform centralized (i.e., server-side) evaluation
+        of model parameters.
+        Parameters
+        ----------
+        server_round : int
+            The current round of federated learning.
+        parameters: Parameters
+            The current (global) model parameters.
+        Returns
+        -------
+        evaluation_result : Optional[Tuple[float, Dict[str, Scalar]]]
+            The evaluation result, usually a Tuple containing loss and a
+            dictionary containing task-specific metrics (e.g., accuracy).
+        """
+        return None
 
-# Start simulation
-fl.simulation.start_simulation(
-    client_fn=client_fn,
-    num_clients=NUM_CLIENTS,
-    config=fl.server.ServerConfig(num_rounds=2),
-    strategy=fl.server.strategy.FedAvg(),
-)
+def client_fn(cid: str) -> GeneticClient:
+    return GeneticClient(cid)
