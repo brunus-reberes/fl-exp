@@ -12,7 +12,6 @@ class GeneticClient(fl.client.NumPyClient):
     def __init__(self, cid) -> None:
         self.hof = []
         self.cid = cid
-        model.init_model()
 
     def get_properties(self, config: Config) -> Dict[str, Scalar]:
         """Returns a client's set of properties.
@@ -48,7 +47,7 @@ class GeneticClient(fl.client.NumPyClient):
         parameters : NDArrays
             The local model parameters as a list of NumPy ndarrays.
         """
-        return np.array(self.hof)
+        return self.hof
 
     def fit(
         self, parameters: NDArrays, config: Dict[str, Scalar]
@@ -76,8 +75,8 @@ class GeneticClient(fl.client.NumPyClient):
             bool, bytes, float, int, or str. It can be used to communicate
             arbitrary values back to the server.
         """
-        self.hof = model.train(parameters)
-        return np.array(self.hof), 1, {}
+        self.hof = model.train(parameters.toList(), True)
+        return self.hof, 1, {}
 
     def evaluate(
         self, parameters: NDArrays, config: Dict[str, Scalar]
@@ -111,7 +110,7 @@ class GeneticClient(fl.client.NumPyClient):
         extended format (int, float, float, Dict[str, Scalar]) have been
         deprecated and removed since Flower 0.19.
         """
-        return 0, 1, {}
+        return float(0), 1, {}
 
 class GeneticStrategy(fl.server.strategy.Strategy):
     def initialize_parameters(
@@ -128,7 +127,7 @@ class GeneticStrategy(fl.server.strategy.Strategy):
             If parameters are returned, then the server will treat these as the
             initial global model parameters.
         """
-        return None
+        return fl.common.ndarrays_to_parameters(model.toolbox.population(n=300))
 
     def configure_fit(
         self, server_round: int, parameters: Parameters, client_manager: ClientManager
@@ -186,7 +185,10 @@ class GeneticStrategy(fl.server.strategy.Strategy):
             parameters, the updates received in this round are discarded, and
             the global model parameters remain the same.
         """
-        return None, {}
+        new_hof = model.tools.HallOfFame(10)
+        for _, hof in results:
+            new_hof.update(hof)
+        return fl.common.ndarrays_to_parameters(new_hof), {}
 
     def configure_evaluate(
         self, server_round: int, parameters: Parameters, client_manager: ClientManager
@@ -239,7 +241,7 @@ class GeneticStrategy(fl.server.strategy.Strategy):
             The aggregated evaluation result. Aggregation typically uses some variant
             of a weighted average.
         """
-        return None
+        return None, {}
 
     def evaluate(
         self, server_round: int, parameters: Parameters
