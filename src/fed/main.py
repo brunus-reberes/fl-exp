@@ -1,9 +1,6 @@
 import flwr as fl
 import federated as fed
-
-CLIENTS = 1
-ROUNDS = 1
-SIMULATE = True
+from settings import SIMULATE, CLIENTS, ROUNDS
 
 if __name__ == "__main__":
     if SIMULATE:

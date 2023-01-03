@@ -70,3 +70,4 @@ def train(toolbox, init_population: list = [], verbose: bool = False):
 def to_json(obj):
     return jsonpickle.encode(obj)
 
+if __main

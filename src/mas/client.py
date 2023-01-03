@@ -1,7 +1,7 @@
 from peak import Agent, CyclicBehaviour, JoinGroup, Message, Template
-from settings import group
+from src.mas.settings import group
 import logging
-import model
+import src.mas.model as model
 from jsonpickle import decode, encode
 logger = logging.getLogger(__name__)
 
@@ -16,6 +16,7 @@ class client(Agent):
             if msg:
                 logger.info(msg.get_metadata("population"))
                 population = decode(msg.get_metadata("population"))
+                logger.info(str(population[0]))
                 round = msg.get_metadata("round")
                 hof = model.train(self.toolbox, population)
                 hof_message = Message(to=msg.sender)

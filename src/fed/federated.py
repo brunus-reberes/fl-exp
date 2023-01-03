@@ -7,6 +7,7 @@ from flwr.server.client_manager import ClientManager
 from flwr.server.client_proxy import ClientProxy
 
 import model
+from settings import POPULATION_SIZE 
 
 class GeneticClient(fl.client.NumPyClient):
     def __init__(self, cid) -> None:
@@ -75,7 +76,8 @@ class GeneticClient(fl.client.NumPyClient):
             bool, bytes, float, int, or str. It can be used to communicate
             arbitrary values back to the server.
         """
-        self.hof = model.train(parameters.toList(), True)
+        parameters = np.array(parameters)
+        self.hof = model.train(parameters, True)
         return self.hof, 1, {}
 
     def evaluate(
@@ -127,7 +129,10 @@ class GeneticStrategy(fl.server.strategy.Strategy):
             If parameters are returned, then the server will treat these as the
             initial global model parameters.
         """
-        return fl.common.ndarrays_to_parameters(model.toolbox.population(n=300))
+        population = []
+        for ind in model.toolbox.population(n=POPULATION_SIZE):
+            population.append(str(ind))
+        return fl.common.ndarrays_to_parameters(population)
 
     def configure_fit(
         self, server_round: int, parameters: Parameters, client_manager: ClientManager
