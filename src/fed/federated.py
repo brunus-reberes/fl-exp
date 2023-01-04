@@ -2,7 +2,7 @@ import flwr as fl
 from typing import Dict, List, Optional, Tuple, Union
 import numpy as np
 
-from flwr.common import EvaluateIns, EvaluateRes, FitIns, FitRes, Parameters, Config, NDArrays, Scalar
+from flwr.common import EvaluateIns, EvaluateRes, FitIns, FitRes, Parameters, Config, NDArrays, Scalar, parameters_to_ndarrays, ndarrays_to_parameters
 from flwr.server.client_manager import ClientManager
 from flwr.server.client_proxy import ClientProxy
 
@@ -132,7 +132,7 @@ class GeneticStrategy(fl.server.strategy.Strategy):
         population = []
         for ind in model.toolbox.population(n=POPULATION_SIZE):
             population.append(str(ind))
-        return fl.common.ndarrays_to_parameters(population)
+        return ndarrays_to_parameters(population)
 
     def configure_fit(
         self, server_round: int, parameters: Parameters, client_manager: ClientManager
@@ -191,9 +191,14 @@ class GeneticStrategy(fl.server.strategy.Strategy):
             the global model parameters remain the same.
         """
         new_hof = model.tools.HallOfFame(10)
-        for _, hof in results:
+        for _, fitres in results:
+            hof = np.array(parameters_to_ndarrays(fitres.parameters))
+            hof = model.strings_to_individuals(hof)
             new_hof.update(hof)
-        return fl.common.ndarrays_to_parameters(new_hof), {}
+        population = []
+        for ind in new_hof:
+            population.append(str(ind))
+        return ndarrays_to_parameters(population), {}
 
     def configure_evaluate(
         self, server_round: int, parameters: Parameters, client_manager: ClientManager

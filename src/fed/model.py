@@ -48,9 +48,7 @@ toolbox.decorate("mutate", gp.staticLimit(key=operator.attrgetter("height"), max
 
 def train(init_population: list = [], verbose: bool = False):
     #converting strings into individuals
-    pop = []
-    for ind in init_population:
-        pop.append(creator.Individual.from_string(ind, pset))
+    pop = strings_to_individuals(init_population)
     stats_fit = tools.Statistics(lambda ind: ind.fitness.values)
     stats_size = tools.Statistics(len)
     mstats = tools.MultiStatistics(fitness=stats_fit, size=stats_size)
@@ -69,6 +67,12 @@ def train(init_population: list = [], verbose: bool = False):
     for ind in hof:
         new_pop.append(str(ind))
     return new_pop
+
+def strings_to_individuals(population):
+    pop = []
+    for ind in population:
+        pop.append(creator.Individual.from_string(ind, pset))
+    return pop
 
 if __name__ == "__main__":
     s = str(toolbox.individual())
