@@ -6,13 +6,18 @@ from flwr.common import EvaluateIns, EvaluateRes, FitIns, FitRes, Parameters, Co
 from flwr.server.client_manager import ClientManager
 from flwr.server.client_proxy import ClientProxy
 
+import model_test
 import model
-from settings import POPULATION_SIZE 
+from settings import POPULATION_SIZE, TEST, POPULATION, CROSSOVER, MUTATION, GENERATION, INIT_MIN_DEPTH, INIT_MAX_DEPTH, MAX_DEPTH, ELITISM, HOF_SIZE, RUNS, VERBOSE
 
 class GeneticClient(fl.client.NumPyClient):
     def __init__(self, cid) -> None:
         self.hof = []
         self.cid = cid
+        if TEST:
+            self.model = model_test
+        else:
+            self.model = model
 
     def get_properties(self, config: Config) -> Dict[str, Scalar]:
         """Returns a client's set of properties.
@@ -76,8 +81,22 @@ class GeneticClient(fl.client.NumPyClient):
             bool, bytes, float, int, or str. It can be used to communicate
             arbitrary values back to the server.
         """
-        parameters = np.array(parameters)
-        self.hof = model.train(parameters, True)
+        init_population = np.array(parameters)
+        self.hof = self.model.train(
+            self.model.evaluate, 
+            init_population, 
+            POPULATION, 
+            GENERATION, 
+            CROSSOVER, 
+            MUTATION, 
+            ELITISM, 
+            INIT_MIN_DEPTH, 
+            INIT_MAX_DEPTH, 
+            MAX_DEPTH, 
+            HOF_SIZE, 
+            RUNS, 
+            VERBOSE
+            )
         return self.hof, 1, {}
 
     def evaluate(
@@ -115,6 +134,13 @@ class GeneticClient(fl.client.NumPyClient):
         return float(0), 1, {}
 
 class GeneticStrategy(fl.server.strategy.Strategy):
+    def __init__(self) -> None:
+        super().__init__()
+        if TEST:
+            self.model = model_test
+        else:
+            self.model = model
+
     def initialize_parameters(
             self, client_manager: ClientManager
         ) -> Optional[Parameters]:
@@ -190,15 +216,11 @@ class GeneticStrategy(fl.server.strategy.Strategy):
             parameters, the updates received in this round are discarded, and
             the global model parameters remain the same.
         """
-        new_hof = model.tools.HallOfFame(10)
+        parameters = []
         for _, fitres in results:
-            hof = np.array(parameters_to_ndarrays(fitres.parameters))
-            hof = model.strings_to_individuals(hof)
-            new_hof.update(hof)
-        population = []
-        for ind in new_hof:
-            population.append(str(ind))
-        return ndarrays_to_parameters(population), {}
+            parameters.append(np.array(parameters_to_ndarrays(fitres.parameters)))
+        result = self.model.aggregate(parameters, HOF_SIZE)
+        return ndarrays_to_parameters(result), {}
 
     def configure_evaluate(
         self, server_round: int, parameters: Parameters, client_manager: ClientManager
