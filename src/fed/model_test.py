@@ -44,7 +44,7 @@ def _primitives():
     pset.addEphemeralConstant("rand101", lambda: random.randint(-1,1))
     return pset
 
-def run(init_population: list = [], population: int = 500, generation: int = 50, crossover_rate: float = 0.8, mutation_rate: float = 0.19, elitism_rate: float = 0.01, init_min_depth: int = 2, init_max_depth: int = 6, max_depth: int = 8, hof_size: int = 10, runs: int = 1, train_data = [], test_data = [], verbose: bool = False):
+def run(init_population: list = [], population: int = 500, generation: int = 50, crossover_rate: float = 0.8, mutation_rate: float = 0.19, elitism_rate: float = 0.01, init_min_depth: int = 2, init_max_depth: int = 6, max_depth: int = 8, hof_size: int = 10, runs: int = 1, train_data = [], test_data = [], seed: int = random.randint(), tournment_size: int = 7, verbose: bool = False):
     pset = _primitives()
 
     toolbox = base.Toolbox()

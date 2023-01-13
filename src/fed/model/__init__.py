@@ -103,36 +103,18 @@ def _evaluate(individual, compile, x_train, y_train):
         accuracy = 0
     return accuracy,
 
-def run(init_population: list = [], population: int = 500, generation: int = 50, crossover_rate: float = 0.8, mutation_rate: float = 0.19, elitism_rate: float = 0.01, init_min_depth: int = 2, init_max_depth: int = 6, max_depth: int = 8, hof_size: int = 10, runs: int = 1, train_data = [], test_data = [], seed: int = random.randint(), verbose: bool = False):
-
-    # parameters:
-    population = 500
-    generation = 50
-    cxProb = 0.8
-    mutProb = 0.19
-    elitismProb = 0.01
-    totalRuns = 1
-    initialMinDepth = 2
-    initialMaxDepth = 6
-    maxDepth = 8
+def run(init_population: list = [], population: int = 500, generation: int = 50, crossover_rate: float = 0.8, mutation_rate: float = 0.19, elitism_rate: float = 0.01, init_min_depth: int = 2, init_max_depth: int = 6, max_depth: int = 8, hof_size: int = 10, runs: int = 1, train_data = [], test_data = [], seed: int = random.randint(), tournment_size: int = 7, verbose: bool = False):
     ##GP
-
-
-    ##
-    creator.create("FitnessMax", base.Fitness, weights=(1.0,))
-    creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMax)
-
+    pset = _primitives()
     toolbox = base.Toolbox()
-    toolbox.register("expr", gp_restrict.genHalfAndHalfMD, pset=pset, min_=initialMinDepth, max_=initialMaxDepth)
+    toolbox.register("expr", gp_restrict.genHalfAndHalfMD, pset=pset, min_=init_min_depth, max_=init_max_depth)
     toolbox.register("individual", tools.initIterate, creator.Individual, toolbox.expr)
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
     toolbox.register("compile", gp.compile, pset=pset)
     toolbox.register("mapp", map)
-
-
     # genetic operator
-    toolbox.register("evaluate", evalTrain)
-    toolbox.register("select", tools.selTournament, tournsize=7)
+    toolbox.register("evaluate", _evaluate, x_train=train_data[0], y_train=train_data[1])
+    toolbox.register("select", tools.selTournament, tournsize=tournment_size)
     toolbox.register("selectElitism", tools.selBest)
     toolbox.register("mate", gp.cxOnePoint)
     toolbox.register("expr_mut", gp_restrict.genFull, min_=0, max_=2)
@@ -140,44 +122,47 @@ def run(init_population: list = [], population: int = 500, generation: int = 50,
     # toolbox.decorate("mate", gp.staticLimit(key=operator.attrgetter("height"), max_value=maxDepth))
     # toolbox.decorate("mutate", gp.staticLimit(key=operator.attrgetter("height"), max_value=maxDepth))
 
-    def GPMain(randomSeeds):
-        random.seed(randomSeeds)
+    random.seed(seed)
 
-        pop = toolbox.population(population)
-        hof = tools.HallOfFame(10)
-        log = tools.Logbook()
-        stats_fit = tools.Statistics(key=lambda ind: ind.fitness.values)
-        stats_size_tree = tools.Statistics(key=len)
-        mstats = tools.MultiStatistics(fitness=stats_fit, size_tree=stats_size_tree)
-        mstats.register("avg", numpy.mean)
-        mstats.register("std", numpy.std)
-        mstats.register("min", numpy.min)
-        mstats.register("max", numpy.max)
-        log.header = ["gen", "evals"] + mstats.fields
+    pop = toolbox.population(population)
+    hof = tools.HallOfFame(hof_size)
+    log = tools.Logbook()
+    stats_fit = tools.Statistics(key=lambda ind: ind.fitness.values)
+    stats_size_tree = tools.Statistics(key=len)
+    mstats = tools.MultiStatistics(fitness=stats_fit, size_tree=stats_size_tree)
+    mstats.register("avg", numpy.mean)
+    mstats.register("std", numpy.std)
+    mstats.register("min", numpy.min)
+    mstats.register("max", numpy.max)
+    log.header = ["gen", "evals"] + mstats.fields
 
-        pop, log = evalGP.eaSimple(pop, toolbox, cxProb, mutProb, elitismProb, generation,
-                                stats=mstats, halloffame=hof, verbose=True)
+    pop, log = evalGP.eaSimple(pop, toolbox, crossover_rate, mutation_rate, elitism_rate, generation,
+                            stats=mstats, halloffame=hof, verbose=verbose)
+    #converting individuals to strings
+    new_hof = []
+    for ind in hof:
+        new_hof.append(str(ind))
+    return pop, log, new_hof
+        
 
-        return pop, log, hof
 
-
-    def evalTest(toolbox, individual, trainData, trainLabel, test, testL):
-        func = toolbox.compile(expr=individual)
-        train_tf = []
-        test_tf = []
-        for i in range(0, len(trainLabel)):
-            train_tf.append(numpy.asarray(func(trainData[i, :, :])))
-        for j in range(0, len(testL)):
-            test_tf.append(numpy.asarray(func(test[j, :, :])))
-        train_tf = numpy.asarray(train_tf, dtype=float)
-        test_tf = numpy.asarray(test_tf, dtype=float)
-        min_max_scaler = preprocessing.MinMaxScaler()
-        train_norm = min_max_scaler.fit_transform(train_tf)
-        test_norm = min_max_scaler.transform(test_tf)
-        lsvm= LinearSVC()
-        lsvm.fit(train_norm, trainLabel)
-        accuracy = round(100*lsvm.score(test_norm, testL),2)
-        return numpy.asarray(train_tf), numpy.asarray(test_tf), trainLabel, testL, accuracy
+def evalTest(toolbox, individual, trainData, trainLabel, test, testL):
+    func = toolbox.compile(expr=individual)
+    train_tf = []
+    test_tf = []
+    for i in range(0, len(trainLabel)):
+        train_tf.append(numpy.asarray(func(trainData[i, :, :])))
+    for j in range(0, len(testL)):
+        test_tf.append(numpy.asarray(func(test[j, :, :])))
+    train_tf = numpy.asarray(train_tf, dtype=float)
+    test_tf = numpy.asarray(test_tf, dtype=float)
+    min_max_scaler = preprocessing.MinMaxScaler()
+    train_norm = min_max_scaler.fit_transform(train_tf)
+    test_norm = min_max_scaler.transform(test_tf)
+    lsvm= LinearSVC()
+    lsvm.fit(train_norm, trainLabel)
+    accuracy = round(100*lsvm.score(test_norm, testL),2)
+    return numpy.asarray(train_tf), numpy.asarray(test_tf), trainLabel, testL, accuracy
 
 
 if __name__ == "__main__":
