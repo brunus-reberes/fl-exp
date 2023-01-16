@@ -193,10 +193,28 @@ def mnist_normal(path='src\datasets\\normal', train_size=None, test_size=None):
         test_labels = test_labels[:test_size]
     return train_data, train_labels, test_data, test_labels
 
+def mnist_rotation_back_image(path='src\datasets\\mnist_rotation_back_image_new', train_size=None, test_size=None):
+    test_set = numpy.loadtxt(f'{path}\\mnist_all_background_images_rotation_normalized_test.amat')
+    train_set = numpy.loadtxt(f'{path}\\mnist_all_background_images_rotation_normalized_train_valid.amat')
+    test_data = test_set[:, :-1].reshape((len(test_set), 28, 28))
+    test_labels = test_set[:, -1].astype('uint8')
+    train_data = train_set[:, :-1].reshape((len(train_set), 28, 28))
+    train_labels = train_set[:, -1].astype('uint8')
+    if train_size:
+        train_data = train_data[:train_size]
+        train_labels = train_labels[:train_size]
+    if test_size:
+        test_data = test_data[:test_size]
+        test_labels = test_labels[:test_size]
+    return train_data, train_labels, test_data, test_labels
+
 if __name__ == "__main__":
     train_size, test_size = 1000, 100
     #get data: MNIST normal
-    dataset = mnist_normal(train_size=train_size, test_size=test_size)
+    #dataset = mnist_normal(train_size=train_size, test_size=test_size)
+
+    #get data: MNIST rotation + back image
+    dataset = mnist_rotation_back_image(train_size=train_size, test_size=test_size)
 
     #start evolution
     beginTime = time.process_time()
@@ -217,7 +235,6 @@ if __name__ == "__main__":
     test_time = time.process_time() - endTime
 
     #print results
-    print(log)
     print(f"train time: {train_time}")
     print(f"test time: {test_time}")
     print(f"best individual: {hof[0]}")
