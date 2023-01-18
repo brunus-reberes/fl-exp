@@ -1,5 +1,5 @@
 #System
-TEST = False
+TEST = True
 SIMULATE = True
 VERBOSE = True
 SEED = 23

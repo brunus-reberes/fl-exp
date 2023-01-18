@@ -4,6 +4,8 @@ os.chdir(Path(__file__).parent)
 import flwr as fl
 import federated as fed
 from settings import SIMULATE, CLIENTS, ROUNDS
+import logging
+logging.basicConfig()
 
 
 if __name__ == "__main__":

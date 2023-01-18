@@ -11,6 +11,7 @@ import numpy
 
 from dataset import load_dataset 
 import logging
+import pickle
 
 from settings import TRAIN_SIZE, TEST_SIZE, TEST, POPULATION, CROSSOVER, MUTATION, GENERATION, INIT_MIN_DEPTH, INIT_MAX_DEPTH, MAX_DEPTH, ELITISM, HOF_SIZE, RUNS, DATASET, TOURNMENT_SIZE, SEED, VERBOSE
 
@@ -28,7 +29,7 @@ class GeneticClient(fl.client.NumPyClient):
         self.test_set = test_set
         self.logger = logging.getLogger(f'GeneticClientID{cid}')
         self.logger.setLevel(logging.DEBUG)
-        fh = logging.FileHandler(f'GeneticClientID{cid}.log')
+        fh = logging.FileHandler(f'logs/GeneticClientID{cid}.log')
         fh.setLevel(logging.DEBUG)
         self.logger.addHandler(fh)
 
@@ -42,7 +43,8 @@ class GeneticClient(fl.client.NumPyClient):
     def fit(
         self, parameters: NDArrays, config: Dict[str, Scalar]
     ) -> Tuple[NDArrays, int, Dict[str, Scalar]]:
-        self.logger.info(f'ROUND {self.round := self.round + 1}')
+        self.round = self.round + 1
+        self.logger.info(f'ROUND {self.round}')
         self.logger.info(f'initial population (from server): {parameters}')
         init_population = model.strings_to_individuals(parameters)
         _, log, self.hof = model.run(
@@ -64,6 +66,7 @@ class GeneticClient(fl.client.NumPyClient):
             )
         if VERBOSE:
             self.logger.info(str(log))
+        pickle.dump(log, open(f'pickles/GeneticClientID{self.cid}ROUND{self.round}.pickle', "wb"))
         hof = model.individuals_to_strings(self.hof)
         return [hof], len(self.train_set[0]), {}
 
@@ -81,7 +84,7 @@ class GeneticStrategy(fl.server.strategy.Strategy):
         super().__init__()
         self.logger = logging.getLogger(f'GeneticStrategy')
         self.logger.setLevel(logging.DEBUG)
-        fh = logging.FileHandler(f'GeneticStrategy.log')
+        fh = logging.FileHandler(f'logs/GeneticStrategy.log')
         fh.setLevel(logging.DEBUG)
         self.logger.addHandler(fh)
         self.round = 0
@@ -99,7 +102,8 @@ class GeneticStrategy(fl.server.strategy.Strategy):
     def initialize_parameters(
             self, client_manager: ClientManager
         ) -> Optional[Parameters]:
-        self.logger.info(f"ROUND {self.round := self.round + 1}")
+        self.round = self.round + 1
+        self.logger.info(f"ROUND {self.round}")
         return None
 
     def configure_fit(
@@ -121,12 +125,16 @@ class GeneticStrategy(fl.server.strategy.Strategy):
             parameters.extend(hof)
         parameters = model.strings_to_individuals(parameters)
         result = model.aggregate(parameters, HOF_SIZE)
+        print(result)
+        print(type(result))
+        #logging
+        record = self.mstats.compile(list(result))
+        self.logbook.record(round=self.round, nclients=self.nclients, evals=len(result), **record)
         self.logger.info('Global Best Individuals')
-        self.record = self.mstats.compile(result)
-        result = model.individuals_to_strings(result)
         for ind in parameters:
             self.logger.info(ind) 
         self.logger.info(str(self.logbook))
+        result = model.individuals_to_strings(result)
         return ndarrays_to_parameters([result]), {}
 
     def configure_evaluate(
@@ -148,13 +156,13 @@ class GeneticStrategy(fl.server.strategy.Strategy):
             error = np.mean(error)
         else:
             error = 100
-        self.logbook.record(round=self.round, nclients=self.nclients, evals=len(result), **record)
         self.logger.info(f'Error mean: {error}')
         return 0., {"classification_error_rate_mean": error}
 
     def evaluate(
         self, server_round: int, parameters: Parameters
     ) -> Optional[Tuple[float, Dict[str, Scalar]]]:
+        pickle.dump(self.logbook, open(f'pickles/GeneticStrategyROUND{self.round}.pickle', "wb"))
         return None
 
 def client_fn(cid: str) -> GeneticClient:
