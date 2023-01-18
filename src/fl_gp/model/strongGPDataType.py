@@ -1,5 +1,3 @@
-
-
 class Int1(int):
     pass
 
@@ -12,19 +10,14 @@ class Int3(int):
 class Int4(int):
     pass
 
+class Float1(float):
+    pass
 
+class Float2(float):
+    pass
 
-class Float1:
-    def __init__(float):
-        pass
-
-class Float2:
-    def __init__(float):
-        pass
-
-class Float3:
-    def __init__(float):
-        pass
+class Float3(float):
+    pass
 
 
 class Img:

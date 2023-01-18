@@ -18,7 +18,7 @@ from sklearn.exceptions import ConvergenceWarning
 import operator
 
 creator.create("Fitness", base.Fitness, weights=(1.0,))
-creator.create("Individual", gp.PrimitiveTree, fitness=creator.Fitness)
+creator.create("Individual", gp_restrict.PrimitiveTree, fitness=creator.Fitness)
 #Primitives
 pset = gp.PrimitiveSetTyped('MAIN', [Img], Vector1, prefix='Image')
 #feature concatenation
@@ -87,6 +87,12 @@ pset.addEphemeralConstant('Theta', lambda: random.randint(0, 8), Float1)
 pset.addEphemeralConstant('Frequency', lambda: random.randint(0, 5), Float2)
 pset.addEphemeralConstant('n', lambda: round(random.random(), 3), Float3)
 pset.addEphemeralConstant('KernelSize', lambda: random.randrange(2, 5, 2), Int3)
+
+def individuals_to_strings(indviduals):
+    return list(map(lambda x: str(x), indviduals))
+
+def strings_to_individuals(strings):
+    return list(map(lambda x: creator.Individual.from_string(x), strings))
 
 @ignore_warnings(category=ConvergenceWarning)
 def _evaluate(individual, compile, train_data, train_label):

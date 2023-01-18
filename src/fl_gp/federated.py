@@ -9,7 +9,7 @@ from flwr.server.client_proxy import ClientProxy
 from dataset import load_dataset 
 
 from settings import TRAIN_SIZE, TEST_SIZE, TEST, POPULATION, CROSSOVER, MUTATION, GENERATION, INIT_MIN_DEPTH, INIT_MAX_DEPTH, MAX_DEPTH, ELITISM, HOF_SIZE, RUNS, DATASET, TOURNMENT_SIZE, SEED, VERBOSE
-import jsonpickle
+
 if TEST:
     import model_test as model
 else:
@@ -52,13 +52,15 @@ class GeneticClient(fl.client.NumPyClient):
             )
         if VERBOSE:
             print(log)
-        return [jsonpickle.encode(self.hof, include_properties=True)], len(self.train_set[0]), {}
+        return self.hof, len(self.train_set[0]), {}
 
     def evaluate(
         self, parameters: NDArrays, config: Dict[str, Scalar]
     ) -> Tuple[float, int, Dict[str, Scalar]]:
-        hof = jsonpickle.decode(str(parameters[0]))
-        accuracy = model.test(hof[0], self.train_set[0], self.train_set[1], self.test_set[0], self.test_set[1])
+        print(parameters)
+        print(type(parameters))
+        parameters = model.strings_to_individuals(parameters)
+        accuracy = model.test(parameters[0], self.train_set[0], self.train_set[1], self.test_set[0], self.test_set[1])
         return 0., len(self.test_set[0]), {"classification_error_rate": 100-accuracy}
 
 class GeneticStrategy(fl.server.strategy.Strategy):
@@ -84,12 +86,12 @@ class GeneticStrategy(fl.server.strategy.Strategy):
     ) -> Tuple[Optional[Parameters], Dict[str, Scalar]]:
         parameters = []
         for _, fitres in results:
-            s = str(parameters_to_ndarrays(fitres.parameters)[0])
-            hof = jsonpickle.decode(s)
+            hof = parameters_to_ndarrays(fitres.parameters)
             print(hof[0])
             parameters.append(hof)
+        parameters = model.strings_to_individuals(parameters)
         result = model.aggregate(parameters, HOF_SIZE)
-        result = jsonpickle.encode(result, include_properties=True)
+        result = model.individuals_to_strings(result)
         return ndarrays_to_parameters([result]), {}
 
     def configure_evaluate(

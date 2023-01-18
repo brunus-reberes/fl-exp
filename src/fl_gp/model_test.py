@@ -22,6 +22,12 @@ pset.addPrimitive(math.sin, 1)
 pset.addEphemeralConstant("rand101", lambda: random.randint(-1,1))
 
 
+def individuals_to_strings(indviduals):
+    return list(map(lambda x: str(x), indviduals))
+
+def strings_to_individuals(strings):
+    return list(map(lambda x: creator.Individual.from_string(x), strings))
+
 def aggregate(populations, hof_size:int = 10):
     hof = tools.HallOfFame(hof_size)
     for pop in populations:

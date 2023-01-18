@@ -23,11 +23,11 @@ if __name__ == "__main__":
         test(ind, dataset[0], dataset[1], dataset[2], dataset[3])
         exit()
     else:
-        class int(strongGPDataType.Int3):
-            pass
         ind = "Roots3(Global_SIFT(SobelXF(MinF(MaxP(ReLU(Image0), 2, 3)))), FGlobal_uLBP(Image0), Global_HOG(ReLUF(ReLUF(SqrtF(HoGF(SobelXF(SobelYF(SqrtF(MaxF(GauF(MaxP(Image0, 4, 4), 4)))))))))))"
         ind = creator.Individual.from_string(ind, pset)
         print(ind)
+        exit()
+    
     #start evolution
     beginTime = time.process_time()
     pop, log, hof = run(
