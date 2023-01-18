@@ -10,10 +10,10 @@ class Int3(int):
 class Int4(int):
     pass
 
-class Float1(float):
+class Float1(int):
     pass
 
-class Float2(float):
+class Float2(int):
     pass
 
 class Float3(float):
@@ -24,15 +24,15 @@ class Img:
     def __init__(ndarray):
         pass
     
-class Img1:
+class Img1(Img):
     def __init__(ndarray):
         pass
     
-class Img2:
+class Img2(Img):
     def __init__(ndarray):
         pass
 
-class Img3:
+class Img3(Img):
     def __init__(ndarray):
         pass
     
@@ -40,6 +40,6 @@ class Vector:
     def __init__(ndarray):
         pass
     
-class Vector1:
+class Vector1(Vector):
     def __init__(ndarray):
         pass

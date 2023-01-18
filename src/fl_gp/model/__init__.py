@@ -88,11 +88,12 @@ pset.addEphemeralConstant('Frequency', lambda: random.randint(0, 5), Float2)
 pset.addEphemeralConstant('n', lambda: round(random.random(), 3), Float3)
 pset.addEphemeralConstant('KernelSize', lambda: random.randrange(2, 5, 2), Int3)
 
+
 def individuals_to_strings(indviduals):
     return list(map(lambda x: str(x), indviduals))
 
 def strings_to_individuals(strings):
-    return list(map(lambda x: creator.Individual.from_string(x), strings))
+    return list(map(lambda x: creator.Individual.from_string(x, pset), strings))
 
 @ignore_warnings(category=ConvergenceWarning)
 def _evaluate(individual, compile, train_data, train_label):
@@ -112,8 +113,7 @@ def _evaluate(individual, compile, train_data, train_label):
 
 def aggregate(populations, hof_size:int = 10):
     hof = tools.HallOfFame(hof_size)
-    for pop in populations:
-        hof.update(pop)
+    hof.update(populations)
     return hof
 
 def run(init_population: list = [], population: int = 500, generation: int = 50, crossover_rate: float = 0.8, mutation_rate: float = 0.19, elitism_rate: float = 0.01, init_min_depth: int = 2, init_max_depth: int = 6, max_depth: int = 8, hof_size: int = 10, runs: int = 1, train_set = [], test_set = [], seed: int = random.randint(1, 100), tournment_size: int = 7, verbose: bool = False):
@@ -154,6 +154,7 @@ def run(init_population: list = [], population: int = 500, generation: int = 50,
                             stats=mstats, halloffame=hof, verbose=verbose)
     return pop, log, hof
 
+@ignore_warnings(category=ConvergenceWarning)
 def test(individual, train_data, train_label, test_data, test_label):
     func = gp.compile(individual, pset)
     train_tf = []
@@ -172,6 +173,7 @@ def test(individual, train_data, train_label, test_data, test_label):
     accuracy = round(100*lsvm.score(test_norm, test_label),2)
     return accuracy
 
+@ignore_warnings(category=ConvergenceWarning)
 def classifier(individual, train_data, train_label):
     func = gp.compile(individual, pset)
     train_tf = []

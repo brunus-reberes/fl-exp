@@ -6,7 +6,11 @@ from flwr.common import EvaluateIns, EvaluateRes, FitIns, FitRes, Parameters, Co
 from flwr.server.client_manager import ClientManager
 from flwr.server.client_proxy import ClientProxy
 
+from deap import tools
+import numpy
+
 from dataset import load_dataset 
+import logging
 
 from settings import TRAIN_SIZE, TEST_SIZE, TEST, POPULATION, CROSSOVER, MUTATION, GENERATION, INIT_MIN_DEPTH, INIT_MAX_DEPTH, MAX_DEPTH, ELITISM, HOF_SIZE, RUNS, DATASET, TOURNMENT_SIZE, SEED, VERBOSE
 
@@ -19,20 +23,28 @@ class GeneticClient(fl.client.NumPyClient):
     def __init__(self, cid, train_set=None, test_set=None) -> None:
         self.hof = []
         self.cid = cid
+        self.round = 0
         self.train_set = train_set
         self.test_set = test_set
+        self.logger = logging.getLogger(f'GeneticClientID{cid}')
+        self.logger.setLevel(logging.DEBUG)
+        fh = logging.FileHandler(f'GeneticClientID{cid}.log')
+        fh.setLevel(logging.DEBUG)
+        self.logger.addHandler(fh)
 
     def get_properties(self, config: Config) -> Dict[str, Scalar]:
         # TODO: receber hyperparametros do servidor
         return {}
 
     def get_parameters(self, config: Dict[str, Scalar]) -> NDArrays:
-        return self.hof
+        return []
 
     def fit(
         self, parameters: NDArrays, config: Dict[str, Scalar]
     ) -> Tuple[NDArrays, int, Dict[str, Scalar]]:
-        init_population = parameters
+        self.logger.info(f'ROUND {self.round := self.round + 1}')
+        self.logger.info(f'initial population (from server): {parameters}')
+        init_population = model.strings_to_individuals(parameters)
         _, log, self.hof = model.run(
             init_population=init_population, 
             population=POPULATION, 
@@ -51,31 +63,50 @@ class GeneticClient(fl.client.NumPyClient):
             tournment_size=TOURNMENT_SIZE,
             )
         if VERBOSE:
-            print(log)
-        return self.hof, len(self.train_set[0]), {}
+            self.logger.info(str(log))
+        hof = model.individuals_to_strings(self.hof)
+        return [hof], len(self.train_set[0]), {}
 
     def evaluate(
         self, parameters: NDArrays, config: Dict[str, Scalar]
     ) -> Tuple[float, int, Dict[str, Scalar]]:
-        print(parameters)
-        print(type(parameters))
-        parameters = model.strings_to_individuals(parameters)
+        parameters = model.strings_to_individuals(parameters[0])
         accuracy = model.test(parameters[0], self.train_set[0], self.train_set[1], self.test_set[0], self.test_set[1])
+        self.logger.info(f'accuracy = {accuracy}')
+        self.logger.info(f'classification_error_rate = {100-accuracy}')
         return 0., len(self.test_set[0]), {"classification_error_rate": 100-accuracy}
 
 class GeneticStrategy(fl.server.strategy.Strategy):
     def __init__(self) -> None:
         super().__init__()
+        self.logger = logging.getLogger(f'GeneticStrategy')
+        self.logger.setLevel(logging.DEBUG)
+        fh = logging.FileHandler(f'GeneticStrategy.log')
+        fh.setLevel(logging.DEBUG)
+        self.logger.addHandler(fh)
+        self.round = 0
+        self.logbook = tools.Logbook()
+        stats_fit = tools.Statistics(key=lambda ind: ind.fitness.values)
+        stats_size_tree = tools.Statistics(key=len)
+        mstats = tools.MultiStatistics(fitness=stats_fit, size_tree=stats_size_tree)
+        mstats.register("avg", numpy.mean)
+        mstats.register("std", numpy.std)
+        mstats.register("min", numpy.min)
+        mstats.register("max", numpy.max)
+        self.mstats = mstats
+        self.logbook.header = ["round", "nclients", "evals"] + self.mstats.fields
 
     def initialize_parameters(
             self, client_manager: ClientManager
         ) -> Optional[Parameters]:
+        self.logger.info(f"ROUND {self.round := self.round + 1}")
         return None
 
     def configure_fit(
         self, server_round: int, parameters: Parameters, client_manager: ClientManager
     ) -> List[Tuple[ClientProxy, FitIns]]:
         clients = client_manager.all().values()
+        self.nclients = len(clients)
         return [(client, FitIns(parameters, {})) for client in clients]
 
     def aggregate_fit(
@@ -86,12 +117,16 @@ class GeneticStrategy(fl.server.strategy.Strategy):
     ) -> Tuple[Optional[Parameters], Dict[str, Scalar]]:
         parameters = []
         for _, fitres in results:
-            hof = parameters_to_ndarrays(fitres.parameters)
-            print(hof[0])
-            parameters.append(hof)
+            hof = parameters_to_ndarrays(fitres.parameters)[0]
+            parameters.extend(hof)
         parameters = model.strings_to_individuals(parameters)
         result = model.aggregate(parameters, HOF_SIZE)
+        self.logger.info('Global Best Individuals')
+        self.record = self.mstats.compile(result)
         result = model.individuals_to_strings(result)
+        for ind in parameters:
+            self.logger.info(ind) 
+        self.logger.info(str(self.logbook))
         return ndarrays_to_parameters([result]), {}
 
     def configure_evaluate(
@@ -113,6 +148,8 @@ class GeneticStrategy(fl.server.strategy.Strategy):
             error = np.mean(error)
         else:
             error = 100
+        self.logbook.record(round=self.round, nclients=self.nclients, evals=len(result), **record)
+        self.logger.info(f'Error mean: {error}')
         return 0., {"classification_error_rate_mean": error}
 
     def evaluate(
