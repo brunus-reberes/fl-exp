@@ -1,6 +1,10 @@
+from pathlib import Path
+import os
+os.chdir(Path(__file__).parent)
 import flwr as fl
 import federated as fed
 from settings import SIMULATE, CLIENTS, ROUNDS
+
 
 if __name__ == "__main__":
     if SIMULATE:
@@ -11,4 +15,5 @@ if __name__ == "__main__":
             config=fl.server.ServerConfig(num_rounds=ROUNDS),
             strategy=fed.GeneticStrategy(),
         )
+
 

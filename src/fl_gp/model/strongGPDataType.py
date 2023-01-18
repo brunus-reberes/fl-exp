@@ -1,18 +1,18 @@
-class Int1:
-    def __init__(int):
-        pass
 
-class Int2:
-    def __init__(int):
-        pass
 
-class Int3:
-    def __init__(int):
-        pass
+class Int1(int):
+    pass
 
-class Int4:
-    def __init__(int):
-        pass
+class Int2(int):
+    pass
+
+class Int3(int):
+    pass
+
+class Int4(int):
+    pass
+
+
 
 class Float1:
     def __init__(float):

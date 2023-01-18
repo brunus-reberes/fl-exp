@@ -47,7 +47,8 @@ def eaSimple(population, toolbox, cxpb, mutpb, elitpb, ngen , stats=None,
     hof_store.update(population)
     record = stats.compile(population) if stats else {}
     logbook.record(gen=0, nevals=len(population), **record)
-    print(logbook.stream)
+    if verbose:
+        print(logbook.stream)
     for gen in range(1, ngen + 1):
         # Select the next generation individuals by elitism
         elitismNum=int(elitpb * len(population))
@@ -86,5 +87,6 @@ def eaSimple(population, toolbox, cxpb, mutpb, elitpb, ngen , stats=None,
         # Append the current generation statistics to the logbook
         record = stats.compile(population) if stats else {}
         logbook.record(gen=gen, nevals=len(offspring), **record)
-        print(logbook.stream)
+        if verbose:
+            print(logbook.stream)
     return population, logbook

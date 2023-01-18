@@ -1,4 +1,6 @@
-# python packages
+from pathlib import Path
+import sys
+sys.path.append(str(Path(__file__).parent.absolute()))
 import random
 import time
 import evalGP_fgp as evalGP
@@ -13,6 +15,7 @@ from sklearn import preprocessing
 #import saveFile
 from sklearn.utils._testing import ignore_warnings
 from sklearn.exceptions import ConvergenceWarning
+import operator
 
 creator.create("Fitness", base.Fitness, weights=(1.0,))
 creator.create("Individual", gp.PrimitiveTree, fitness=creator.Fitness)
@@ -101,6 +104,12 @@ def _evaluate(individual, compile, train_data, train_label):
         accuracy = 0
     return accuracy,
 
+def aggregate(populations, hof_size:int = 10):
+    hof = tools.HallOfFame(hof_size)
+    for pop in populations:
+        hof.update(pop)
+    return hof
+
 def run(init_population: list = [], population: int = 500, generation: int = 50, crossover_rate: float = 0.8, mutation_rate: float = 0.19, elitism_rate: float = 0.01, init_min_depth: int = 2, init_max_depth: int = 6, max_depth: int = 8, hof_size: int = 10, runs: int = 1, train_set = [], test_set = [], seed: int = random.randint(1, 100), tournment_size: int = 7, verbose: bool = False):
     ##GP
     toolbox = base.Toolbox()
@@ -116,12 +125,14 @@ def run(init_population: list = [], population: int = 500, generation: int = 50,
     toolbox.register("mate", gp.cxOnePoint)
     toolbox.register("expr_mut", gp_restrict.genFull, min_=0, max_=2)
     toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
-    #toolbox.decorate("mate", gp.staticLimit(key=operator.attrgetter("height"), max_value=max_depth))
-    #toolbox.decorate("mutate", gp.staticLimit(key=operator.attrgetter("height"), max_value=max_depth))
+    toolbox.decorate("mate", gp.staticLimit(key=operator.attrgetter("height"), max_value=max_depth))
+    toolbox.decorate("mutate", gp.staticLimit(key=operator.attrgetter("height"), max_value=max_depth))
 
     random.seed(seed)
 
-    pop = toolbox.population(population)
+    pop = init_population
+    pop.extend(toolbox.population(n=population-len(init_population)))
+    
     hof = tools.HallOfFame(hof_size)
     log = tools.Logbook()
     stats_fit = tools.Statistics(key=lambda ind: ind.fitness.values)
@@ -135,11 +146,7 @@ def run(init_population: list = [], population: int = 500, generation: int = 50,
 
     pop, log = evalGP.eaSimple(pop, toolbox, crossover_rate, mutation_rate, elitism_rate, generation,
                             stats=mstats, halloffame=hof, verbose=verbose)
-    #converting individuals to strings
-    new_hof = []
-    for ind in hof:
-        new_hof.append(str(ind))
-    return pop, log, new_hof
+    return pop, log, hof
 
 def test(individual, train_data, train_label, test_data, test_label):
     func = gp.compile(individual, pset)
@@ -172,73 +179,10 @@ def classifier(individual, train_data, train_label):
     return lambda img: lsvm.predict(min_max_scaler.transform([numpy.asarray(func(img), dtype=float)]))[0]
 
 def results(ind, train_data, train_labels, test_data, test_labels):
-    #"Roots2(FGlobal_HOG(Image0), FGlobal_SIFT(Mean(Image0)))"
-    ind = "Roots2(FGlobal_HOG(Image0), FGlobal_SIFT(Mean(Image0)))"
+    #ind = "Roots2(FGlobal_HOG(Image0), FGlobal_SIFT(Mean(Image0)))"
     func = classifier(ind, train_data, train_labels)
     for i, img in enumerate(test_data[:10]):
         print(f"expected:{test_labels[i]}; outcome:{func(img)}")
 
-def mnist_normal(path='src\datasets\\normal', train_size=None, test_size=None):
-    from mnist import MNIST
-    dataset = MNIST(path, return_type='numpy')
-    train_data, train_labels = dataset.load_training()
-    test_data, test_labels = dataset.load_testing()
-    train_data = train_data.reshape(len(train_data),28,28).astype('uint8') / 255
-    test_data = test_data.reshape(len(test_data),28,28).astype('uint8') / 255
-    if train_size:
-        train_data = train_data[:train_size]
-        train_labels = train_labels[:train_size]
-    if test_size:
-        test_data = test_data[:test_size]
-        test_labels = test_labels[:test_size]
-    return train_data, train_labels, test_data, test_labels
 
-def mnist_rotation_back_image(path='src\datasets\\mnist_rotation_back_image_new', train_size=None, test_size=None):
-    test_set = numpy.loadtxt(f'{path}\\mnist_all_background_images_rotation_normalized_test.amat')
-    train_set = numpy.loadtxt(f'{path}\\mnist_all_background_images_rotation_normalized_train_valid.amat')
-    test_data = test_set[:, :-1].reshape((len(test_set), 28, 28))
-    test_labels = test_set[:, -1].astype('uint8')
-    train_data = train_set[:, :-1].reshape((len(train_set), 28, 28))
-    train_labels = train_set[:, -1].astype('uint8')
-    if train_size:
-        train_data = train_data[:train_size]
-        train_labels = train_labels[:train_size]
-    if test_size:
-        test_data = test_data[:test_size]
-        test_labels = test_labels[:test_size]
-    return train_data, train_labels, test_data, test_labels
 
-if __name__ == "__main__":
-    train_size, test_size = 1000, 100
-    #get data: MNIST normal
-    #dataset = mnist_normal(train_size=train_size, test_size=test_size)
-
-    #get data: MNIST rotation + back image
-    dataset = mnist_rotation_back_image(train_size=train_size, test_size=test_size)
-
-    #start evolution
-    beginTime = time.process_time()
-    pop, log, hof = run(
-        population=10,
-        generation=2,
-        crossover_rate=0.8,
-        mutation_rate=0.2,
-        train_set=(dataset[0], dataset[1]),
-        seed=10,
-        verbose=True
-    )
-    endTime = time.process_time()
-
-    #test best individual
-    train_time = endTime - beginTime
-    accuracy = test(hof[0], dataset[0], dataset[1], dataset[2], dataset[3])
-    test_time = time.process_time() - endTime
-
-    #print results
-    print(f"train time: {train_time}")
-    print(f"test time: {test_time}")
-    print(f"best individual: {hof[0]}")
-    print(f"accuracy: {accuracy}")
-    print("test preview")
-    results(hof[0], dataset[0], dataset[1], dataset[2], dataset[3])
-    print('End')
