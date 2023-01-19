@@ -15,6 +15,11 @@ def load_dataset(dataset, datasets_path="../datasets", train_size=None, test_siz
     elif dataset == "mnist-rot-back-image":
         return trim(*mnist_rot_back_image(path), train_size, test_size)
 
+def batch(iterable, n=1):
+    l = len(iterable)
+    for ndx in range(0, l, n):
+        yield iterable[ndx:min(ndx + n, l)]
+
 def trim(train_data, train_labels, test_data, test_labels, train_size=None, test_size=None):
     if train_size:
         train_data = train_data[:train_size]

@@ -17,7 +17,7 @@ from sklearn.utils._testing import ignore_warnings
 from sklearn.exceptions import ConvergenceWarning
 import operator
 
-creator.create("Fitness", base.Fitness, weights=(1.0,))
+creator.create("Fitness", base.Fitness, weights=(-1.0,))
 creator.create("Individual", gp_restrict.PrimitiveTree, fitness=creator.Fitness)
 #Primitives
 pset = gp.PrimitiveSetTyped('MAIN', [Img], Vector1, prefix='Image')
@@ -109,7 +109,7 @@ def _evaluate(individual, compile, train_data, train_label):
         accuracy = round(100 * cross_val_score(lsvm, train_norm, train_label, cv=5).mean(), 2)
     except:
         accuracy = 0
-    return accuracy,
+    return 100-accuracy,
 
 def aggregate(populations, hof_size:int = 10):
     hof = tools.HallOfFame(hof_size)
@@ -171,7 +171,7 @@ def test(individual, train_data, train_label, test_data, test_label):
     lsvm= LinearSVC()
     lsvm.fit(train_norm, train_label)
     accuracy = round(100*lsvm.score(test_norm, test_label),2)
-    return accuracy
+    return 100-accuracy
 
 @ignore_warnings(category=ConvergenceWarning)
 def classifier(individual, train_data, train_label):
