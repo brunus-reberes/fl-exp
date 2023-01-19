@@ -149,6 +149,8 @@ def run(init_population: list = [], population: int = 500, generation: int = 50,
     mstats.register("min", numpy.min)
     mstats.register("max", numpy.max)
     log.header = ["gen", "evals"] + mstats.fields
+    log.chapters["fitness"].header = "min", "avg", "max", "std"
+    log.chapters["size"].header = "min", "avg", "max", "std"
 
     pop, log = evalGP.eaSimple(pop, toolbox, crossover_rate, mutation_rate, elitism_rate, generation,
                             stats=mstats, halloffame=hof, verbose=verbose)
