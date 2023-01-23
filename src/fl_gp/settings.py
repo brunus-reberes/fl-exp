@@ -1,24 +1,23 @@
 #System
-TEST = False
-SIMULATE = True
 VERBOSE = True
 SEED = 23
+LOGS = "logs"
+PICKLES = "pickles"
 
 #FL
-CLIENTS = 3
+CLIENTS = 1
 ROUNDS = 30
 
 #Datasets
-DATASET = "mnist-rot" #mnist|mnist-rot|mnist-back-image|mnist-back-rand|mnist-rot-back-image
-TRAIN_SIZE = None #ignored if batch_size not none
-TEST_SIZE = None
-TRAIN_BATCH_SIZE = int(12000/CLIENTS)
-TEST_BATCH_SIZE = int(60000/CLIENTS)
+DATASET = "mnist" #mnist|mnist-rot|mnist-back-image|mnist-back-rand|mnist-rot-back-image
+TRAIN_SIZE = 1000  #12000      #ignored if batch_size not none
+TEST_SIZE = 100   #60000
+BATCH = True
 
 #GP
 RUNS = 1
-POPULATION = 500      #500
-GENERATION = 50       #50
+POPULATION = 10      #500
+GENERATION = 5       #50
 CROSSOVER = 0.8
 MUTATION = 0.19       #0.19
 ELITISM = 0.01

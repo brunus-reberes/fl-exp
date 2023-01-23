@@ -2,101 +2,19 @@ import flwr as fl
 from typing import Dict, List, Optional, Tuple, Union
 import numpy as np
 
-from flwr.common import EvaluateIns, EvaluateRes, FitIns, FitRes, Parameters, Config, NDArrays, Scalar, parameters_to_ndarrays, ndarrays_to_parameters
+from flwr.common import EvaluateIns, EvaluateRes, FitIns, FitRes, Parameters, Scalar, parameters_to_ndarrays, ndarrays_to_parameters
 from flwr.server.client_manager import ClientManager
 from flwr.server.client_proxy import ClientProxy
 
-from deap import tools, gp
+from deap import tools
 import numpy
 
-from dataset import load_dataset, batch
 import logging
 import pickle
 
-from settings import TRAIN_BATCH_SIZE, TEST_BATCH_SIZE, TRAIN_SIZE, TEST_SIZE, TEST, POPULATION, CROSSOVER, MUTATION, GENERATION, INIT_MIN_DEPTH, INIT_MAX_DEPTH, MAX_DEPTH, ELITISM, HOF_SIZE, RUNS, DATASET, TOURNMENT_SIZE, SEED, VERBOSE
+from settings import HOF_SIZE, LOGS, PICKLES
 
-if TEST:
-    import model_test as model
-else:
-    import model
-
-class GeneticClient(fl.client.NumPyClient):
-    def __init__(self, cid, train_set=None, test_set=None) -> None:
-        self.hof = []
-        self.cid = cid
-        self.round = 0
-        self.train_set = train_set
-        self.test_set = test_set
-        self.logger = logging.getLogger(f'GeneticClientID{cid}')
-        self.logger.setLevel(logging.DEBUG)
-        fh = logging.FileHandler(f'logs/GeneticClientID{cid}.log')
-        fh.setLevel(logging.DEBUG)
-        self.logger.addHandler(fh)
-
-    def get_properties(self, config: Config) -> Dict[str, Scalar]:
-        # TODO: receber hyperparametros do servidor
-        return {}
-
-    def get_parameters(self, config: Dict[str, Scalar]) -> NDArrays:
-        return []
-
-    def fit(
-        self, parameters: NDArrays, config: Dict[str, Scalar]
-    ) -> Tuple[NDArrays, int, Dict[str, Scalar]]:
-        #logs
-        self.round = self.round + 1
-        self.logger.info(f'ROUND {self.round}')
-        self.logger.info(f'initial population (from server): {parameters}')
-        
-        #evolution
-        init_population = model.strings_to_individuals(parameters)
-        _, log, self.hof = model.run(
-            init_population=init_population, 
-            population=POPULATION, 
-            generation=GENERATION, 
-            crossover_rate=CROSSOVER, 
-            mutation_rate=MUTATION, 
-            elitism_rate=ELITISM, 
-            init_min_depth=INIT_MIN_DEPTH, 
-            init_max_depth=INIT_MAX_DEPTH, 
-            max_depth=MAX_DEPTH, 
-            hof_size=HOF_SIZE, 
-            runs=RUNS, 
-            train_set=self.train_set,
-            test_set=self.test_set,
-            seed=SEED+int(self.cid),
-            tournment_size=TOURNMENT_SIZE,
-            )
-        self.logger.info(f'Seed: {SEED+int(self.cid)}')
-        if VERBOSE:
-            self.logger.info(str(log))
-        
-        #prints best individuals with updated hall of fame
-        self.logger.info('Global Best Individuals')
-        for i, ind in enumerate(self.hof):
-            self.logger.info(f'{i} (fitness: {round(ind.fitness.values[0], 3)}): {str(ind)}')
-        
-        #pickle
-        pickle.dump(log, open(f'pickles/GeneticClientID{self.cid}ROUND{self.round}.pickle', "ab"))
-
-        #get errors to send to server
-        errors = {}
-        for ind in self.hof:
-            errors[str(ind)] = ind.fitness.values[0]
-
-        hof = model.individuals_to_strings(self.hof)
-        return [hof], len(self.train_set[0]), errors
-
-    def evaluate(
-        self, parameters: NDArrays, config: Dict[str, Scalar]
-    ) -> Tuple[float, int, Dict[str, Scalar]]:
-        parameters = model.strings_to_individuals(parameters[0])
-        errors = {}
-        for param in parameters:
-            error = model.test(param, self.train_set[0], self.train_set[1], self.test_set[0], self.test_set[1])
-            errors[str(param)] = error
-        self.logger.info(f'classification_error_rate = {errors}')
-        return 0., len(self.test_set[0]), errors
+import model
 
 class GeneticStrategy(fl.server.strategy.Strategy):
     def __init__(self) -> None:
@@ -104,12 +22,16 @@ class GeneticStrategy(fl.server.strategy.Strategy):
         #vars
         self.round = 0
         self.hof = []
+
         #logger
         self.logger = logging.getLogger(f'GeneticStrategy')
         self.logger.setLevel(logging.DEBUG)
-        fh = logging.FileHandler(f'logs/GeneticStrategy.log')
+        fh = logging.FileHandler(f'{LOGS}/GeneticStrategy.log')
         fh.setLevel(logging.DEBUG)
+        formatter = logging.Formatter(fmt=' %(name)s :: %(levelname)-8s :: %(message)s')
+        fh.setFormatter(formatter)
         self.logger.addHandler(fh)
+
         #logbook
         self.logbook = tools.Logbook()
         stats_fit = tools.Statistics(key=lambda ind: ind.fitness.values)
@@ -129,7 +51,7 @@ class GeneticStrategy(fl.server.strategy.Strategy):
         ) -> Optional[Parameters]:
         self.round = self.round + 1
         self.logger.info(f"ROUND {self.round}")
-        return None
+        return ndarrays_to_parameters(self.hof)
 
     def configure_fit(
         self, server_round: int, parameters: Parameters, client_manager: ClientManager
@@ -208,7 +130,7 @@ class GeneticStrategy(fl.server.strategy.Strategy):
         self.logbook.record(round=self.round, nclients=self.nclients, evals=len(self.hof), **record)
         self.logger.info(str(self.logbook))
 
-        pickle.dump(self.logbook, open(f'pickles/GeneticStrategyROUND{self.round}.pickle', "ab"))
+        pickle.dump(self.logbook, open(f'{PICKLES}/GeneticStrategyROUND{self.round}.pickle', "ab"))
 
         return 0., ind_mean_error
 
@@ -217,15 +139,3 @@ class GeneticStrategy(fl.server.strategy.Strategy):
     ) -> Optional[Tuple[float, Dict[str, Scalar]]]:
         return None
 
-dataset = load_dataset(DATASET, train_size=TRAIN_SIZE, test_size=TEST_SIZE)
-train_data_batches = list(batch(dataset[0], TRAIN_BATCH_SIZE))
-train_labels_batches = list(batch(dataset[1], TRAIN_BATCH_SIZE))
-test_data_batches = list(batch(dataset[2], TEST_BATCH_SIZE))
-test_labels_batches = list(batch(dataset[3], TEST_BATCH_SIZE))
-
-def client_fn(cid: str) -> GeneticClient:
-    train_data = train_data_batches[int(cid)]
-    train_labels = train_labels_batches[int(cid)]
-    test_data = test_data_batches[int(cid)]
-    test_labels = test_labels_batches[int(cid)]
-    return GeneticClient(cid, (train_data, train_labels), (test_data, test_labels))
