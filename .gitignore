@@ -127,20 +127,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-src/dataset/cifar-10-python.tar.gz
-src/dataset/cifar-10-batches-py/batches.meta
-src/dataset/cifar-10-batches-py/data_batch_1
-src/dataset/cifar-10-batches-py/data_batch_2
-src/dataset/cifar-10-batches-py/data_batch_3
-src/dataset/cifar-10-batches-py/data_batch_4
-src/dataset/cifar-10-batches-py/data_batch_5
-src/dataset/cifar-10-batches-py/readme.html
-src/dataset/cifar-10-batches-py/test_batch
-src/datasets/cifar-10-batches-py/batches.meta
-src/datasets/cifar-10-batches-py/data_batch_1
-src/datasets/cifar-10-batches-py/data_batch_2
-src/datasets/cifar-10-batches-py/data_batch_3
-src/datasets/cifar-10-batches-py/data_batch_4
-src/datasets/cifar-10-batches-py/data_batch_5
-src/datasets/cifar-10-batches-py/readme.html
-src/datasets/cifar-10-batches-py/test_batch
+
+src/datasets/*
