@@ -1,0 +1,8 @@
+defaults:
+  domain: localhost
+  log_level: debug
+agents:
+  server:
+    file: server.py
+  client:
+    file: client.py
