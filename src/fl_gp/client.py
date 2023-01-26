@@ -40,7 +40,8 @@ class GeneticClient(fl.client.NumPyClient):
         self.round = self.round + 1
         self.logger.info(f'ROUND {self.round}')
         self.logger.info(f'initial population (from server): {parameters}')
-        
+        if len(parameters) > 0:
+            parameters = parameters[0]
         #evolution
         init_population = model.strings_to_individuals(parameters)
         _, log, self.hof = model.run(
@@ -62,7 +63,9 @@ class GeneticClient(fl.client.NumPyClient):
             )
         self.logger.info(f'Seed: {SEED+int(self.cid)}')
         if VERBOSE:
-            self.logger.info(str(log))
+            log.chapters["fitness"].header = "min", "avg", "max", "std"
+            log.chapters["size_tree"].header = "min", "avg", "max", "std"
+            self.logger.info(f'\n{str(log)}')
         
         #prints best individuals with updated hall of fame
         self.logger.info('Global Best Individuals')
@@ -85,9 +88,11 @@ class GeneticClient(fl.client.NumPyClient):
     ) -> Tuple[float, int, Dict[str, Scalar]]:
         parameters = model.strings_to_individuals(parameters[0])
         errors = {}
+        self.logger.info('test0')
         for param in parameters:
             error = model.test(param, self.train_set[0], self.train_set[1], self.test_set[0], self.test_set[1])
             errors[str(param)] = error
         self.logger.info(f'classification_error_rate = {errors}')
+        self.logger.info('test')
         return 0., len(self.test_set[0]), errors
 

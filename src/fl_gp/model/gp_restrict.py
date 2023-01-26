@@ -40,7 +40,6 @@ class PrimitiveTree(gp.PrimitiveTree):
                 primitive = pset.mapping[token]
 
                 if type_ is not None and not issubclass(primitive.ret, type_) and not issubclass(type_, primitive.ret):
-                    print(string)
                     raise TypeError("Primitive {} return type {} does not "
                                     "match the expected one: {}."
                                     .format(primitive, primitive.ret, type_))

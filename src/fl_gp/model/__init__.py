@@ -89,11 +89,7 @@ pset.addEphemeralConstant('n', lambda: round(random.random(), 3), Float3)
 pset.addEphemeralConstant('KernelSize', lambda: random.randrange(2, 5, 2), Int3)
 
 
-def individuals_to_strings(indviduals):
-    return list(map(lambda x: str(x), indviduals))
 
-def strings_to_individuals(strings):
-    return list(map(lambda x: creator.Individual.from_string(x, pset), strings))
 
 @ignore_warnings(category=ConvergenceWarning)
 def _evaluate(individual, compile, train_data, train_label):
@@ -195,4 +191,12 @@ def results(ind, train_data, train_labels, test_data, test_labels):
         print(f"expected:{test_labels[i]}; outcome:{func(img)}")
 
 
+def individuals_to_strings(indviduals):
+    return list(map(lambda x: str(x), indviduals))
+
+def strings_to_individuals(strings):
+    return list(map(lambda x: creator.Individual.from_string(x, pset), strings))
+
+def string_to_individual(string):
+    return creator.Individual.from_string(string, pset)
 
