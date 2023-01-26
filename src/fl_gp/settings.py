@@ -12,7 +12,6 @@ ROUNDS = 2
 DATASET = "mnist" #mnist|mnist-rot|mnist-back-image|mnist-back-rand|mnist-rot-back-image
 TRAIN_SIZE = 100  #12000      #ignored if batch_size not none
 TEST_SIZE = 100   #60000
-BATCH = True
 
 #GP
 RUNS = 1
