@@ -7,7 +7,9 @@ from typing import Dict, Tuple
 from flwr.common import Config, NDArrays, Scalar
 import dataset
 from settings import *
+from flwr.common.logger import configure, log
 import model
+import logging
 
 train_data_batch, train_labels_batch, test_data_batch, test_labels_batch = dataset.load_dataset_batches(DATASET, train_size=TRAIN_SIZE, test_size=TEST_SIZE)
 
@@ -15,6 +17,7 @@ train_data_batch, train_labels_batch, test_data_batch, test_labels_batch = datas
 class GeneticClient(fl.client.NumPyClient):
     def __init__(self, cid) -> None:
         self.cid = cid
+        configure('GeneticClient', f'{LOGS}/client_{cid}.log')
 
     def get_properties(self, config: Config) -> Dict[str, Scalar]:
         return {}
@@ -26,12 +29,19 @@ class GeneticClient(fl.client.NumPyClient):
         self, parameters: NDArrays, config: Dict[str, Scalar]
     ) -> Tuple[NDArrays, int, Dict[str, Scalar]]:
 
+        initial_population = []
+        for string in config:
+            ind = model.string_to_individual(string)
+            ind.fitness.values = (config[string],)
+            initial_population.append(ind)
+
         #get data
         train_data = train_data_batch[int(self.cid)]
         train_labels = train_labels_batch[int(self.cid)]
 
         #evolution
-        _, log, hof = model.run(
+        _, logbook, hof = model.run(
+            init_population=initial_population,
             population=POPULATION, 
             generation=GENERATION, 
             hof_size=HOF_SIZE, 
@@ -39,11 +49,14 @@ class GeneticClient(fl.client.NumPyClient):
             seed=SEED+int(self.cid),
             )
 
-        print(log)
-
         pop = {}
         for ind in hof:
             pop[str(ind)] = ind.fitness.values[0]
+
+        log(logging.INFO, f'\n{logbook}')
+        log(logging.INFO, f'Best Individuals (fit):')
+        for i, ind in enumerate(hof, 1):
+            log(logging.INFO, f'{i}: ({round(ind.fitness.values[0], 2)}) {str(ind)}')
             
         return [], len(train_data), pop
 

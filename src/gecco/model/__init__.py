@@ -123,8 +123,9 @@ def run(init_population: list = [], population: int = 500, generation: int = 50,
     toolbox.register("expr_mut", gp_restrict.genFull, min_=0, max_=2)
     toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
 
-    pop = init_population
+    pop = []
     pop.extend(toolbox.population(n=population-len(init_population)))
+    pop = pop + init_population
     
     hof = tools.HallOfFame(hof_size)
     stats_fit = tools.Statistics(key=lambda ind: ind.fitness.values)

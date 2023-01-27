@@ -5,8 +5,8 @@ LOGS = "logs"
 PICKLES = "pickles"
 
 #FL
-CLIENTS = 2
-ROUNDS = 1
+CLIENTS = 1
+ROUNDS = 2
 
 #Datasets
 DATASET = "mnist" 
