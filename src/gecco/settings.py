@@ -5,19 +5,19 @@ LOGS = "logs"
 PICKLES = "pickles"
 
 #FL
-CLIENTS = 2
-ROUNDS = 1
+CLIENTS = 3
+ROUNDS = 30
 
 #Datasets
 DATASET = "mnist" 
-TRAIN_SIZE = 100  
-TEST_SIZE = 100   
+TRAIN_SIZE = 120  
+TEST_SIZE = 600   
 BATCH = True
 
 #GP
-POPULATION = 10     
-GENERATION = 1      
-HOF_SIZE = 2
+POPULATION = 100     
+GENERATION = 10      
+HOF_SIZE = 10
 
 CROSSOVER = 0.8
 MUTATION = 0.19       
