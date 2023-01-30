@@ -188,7 +188,10 @@ def strings_to_individuals(strings):
     return list(map(lambda x: creator.Individual.from_string(x, pset), strings))
 
 def string_to_individual(string):
-    return creator.Individual.from_string(string, pset)
+    try:
+        return creator.Individual.from_string(string, pset)
+    except:
+        return None
 
 def hall_of_fame(population, size:int = 10):
     hof = tools.HallOfFame(size)
