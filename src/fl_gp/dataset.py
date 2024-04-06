@@ -20,15 +20,6 @@ def batch(iterable, n=1):
     for ndx in range(0, l, n):
         yield iterable[ndx:min(ndx + n, l)]
 
-def load_dataset_batches(dataset_name, n, datasets_path="../datasets", train_size=None, test_size=None):
-    dataset = load_dataset(dataset_name, datasets_path)
-    train_data_batch = list(batch(dataset[0], train_size))[n]
-    train_labels_batch = list(batch(dataset[1], train_size))[n]
-    test_data_batch = list(batch(dataset[2], test_size))[n]
-    test_labels_batch = list(batch(dataset[3], test_size))[n]
-    return train_data_batch, train_labels_batch, test_data_batch, test_labels_batch
-    
-
 def trim(train_data, train_labels, test_data, test_labels, train_size=None, test_size=None):
     if train_size:
         train_data = train_data[:train_size]

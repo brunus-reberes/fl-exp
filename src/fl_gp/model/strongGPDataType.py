@@ -19,20 +19,27 @@ class Float2(int):
 class Float3(float):
     pass
 
+
 class Img:
-    pass
+    def __init__(ndarray):
+        pass
     
 class Img1(Img):
-    pass
+    def __init__(ndarray):
+        pass
     
 class Img2(Img):
-    pass
+    def __init__(ndarray):
+        pass
 
 class Img3(Img):
-    pass
+    def __init__(ndarray):
+        pass
     
 class Vector:
-    pass
+    def __init__(ndarray):
+        pass
     
 class Vector1(Vector):
-    pass
+    def __init__(ndarray):
+        pass
